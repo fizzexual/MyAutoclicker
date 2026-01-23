@@ -30,11 +30,6 @@
         .value {
             font-weight: bold;
         }
-        button {
-            font-size: 18px;
-            padding: 10px 25px;
-            margin: 10px;
-        }
     </style>
 </head>
 <body>
@@ -43,12 +38,6 @@
 <p>Click or auto-click the box</p>
 
 <div id="box">CLICK HERE</div>
-
-<div style="margin-top:20px">
-    <button onclick="startClicker()">START AUTOCLICKER</button>
-    <button onclick="stopClicker()">STOP AUTOCLICKER</button>
-    <div id="clickerStatus">Autoclicker: OFF</div>
-</div>
 
 <div id="stats">
     CPS (1s): <span class="value" id="cps1">0</span><br>
@@ -110,26 +99,11 @@ setInterval(() => {
     }
 }, 500);
 
-// ===== AUTCLICKER CONTROL =====
-
-function startClicker() {
-    fetch("/clicker/start", { method: "POST" })
-        .then(r => r.json())
-        .then(d => clickerStatus.innerText = "Autoclicker: " + d.status);
-}
-
-function stopClicker() {
-    fetch("/clicker/stop", { method: "POST" })
-        .then(r => r.json())
-        .then(d => clickerStatus.innerText = "Autoclicker: " + d.status);
-}
-
 const cps1El = document.getElementById("cps1");
 const cps5El = document.getElementById("cps5");
 const cps10El = document.getElementById("cps10");
 const maxCpsEl = document.getElementById("maxCps");
 const sessionCpsEl = document.getElementById("sessionCps");
-const clickerStatus = document.getElementById("clickerStatus");
 </script>
 
 </body>
