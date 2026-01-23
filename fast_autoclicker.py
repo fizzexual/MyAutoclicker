@@ -26,19 +26,25 @@ def click():
     i.type = 0
     i.mi = MOUSEINPUT(0, 0, 0, 2, 0, ctypes.pointer(extra))
     SendInput(1, ctypes.pointer(i), ctypes.sizeof(i))
-    i.mi.dwFlags = 4 
+    i.mi.dwFlags = 4
     SendInput(1, ctypes.pointer(i), ctypes.sizeof(i))
 
 running = False
-delay = 0.0
+click_interval = 0.1
+burst = 1
+target_mode = "Human"
 
 def clicker_loop():
-    global running
+    global running, click_interval, burst
+    next_click = time.perf_counter()
     while True:
         if running:
-            click()
-            if delay > 0:
-                time.sleep(delay)
+            now = time.perf_counter()
+            if now >= next_click:
+                for _ in range(burst):
+                    click()
+                next_click = now + click_interval
+            time.sleep(0.0005)
         else:
             time.sleep(0.01)
 
@@ -46,11 +52,22 @@ threading.Thread(target=clicker_loop, daemon=True).start()
 
 root = tk.Tk()
 root.title("Ultra Fast Autoclicker")
-root.geometry("320x260")
+root.geometry("360x380")
 root.resizable(False, False)
+root.attributes("-topmost", True)
 
 status_var = tk.StringVar(value="OFF")
-cps_var = tk.StringVar(value="∞ (MAX)")
+mode_var = tk.StringVar(value="Human")
+warning_var = tk.StringVar(value="")
+
+modes = {
+    "Human": 5,
+    "Normal": 20,
+    "Above Normal": 50,
+    "Fast": 200,
+    "Ultra Fast": 500,
+    "SONIC": 1000
+}
 
 def start():
     global running
@@ -68,15 +85,21 @@ def toggle_running():
     else:
         start()
 
-def set_cps(val):
-    global delay
-    cps = int(float(val))
-    if cps == 0:
-        delay = 0
-        cps_var.set("∞ (MAX)")
+def set_mode(mode):
+    global click_interval, burst, target_mode
+    target_mode = mode
+    cps = modes[mode]
+    if mode == "SONIC":
+        burst = 20
+        click_interval = 1 / cps
+        warning_var.set("⚠️ MAY FREEZE COMPUTER ⚠️")
+        warning_frame.config(highlightbackground="red", highlightcolor="red", highlightthickness=2)
     else:
-        delay = 1 / cps
-        cps_var.set(str(cps))
+        burst = 1
+        click_interval = 1 / cps
+        warning_var.set("")
+        warning_frame.config(highlightthickness=0)
+    mode_var.set(mode)
 
 ttk.Label(root, text="🖱️ Fast Autoclicker", font=("Arial", 16)).pack(pady=10)
 ttk.Label(root, text="Status:").pack()
@@ -85,13 +108,19 @@ ttk.Label(root, textvariable=status_var, font=("Arial", 14)).pack()
 ttk.Button(root, text="START", command=start).pack(pady=5)
 ttk.Button(root, text="STOP", command=stop).pack(pady=5)
 
-ttk.Label(root, text="CPS (0 = MAX):").pack(pady=5)
-slider = ttk.Scale(root, from_=0, to=1000, orient="horizontal", command=set_cps)
-slider.set(0)
-slider.pack(fill="x", padx=20)
+ttk.Label(root, text="Mode:").pack(pady=5)
+for mode in modes:
+    ttk.Radiobutton(root, text=mode, value=mode, variable=mode_var,
+                    command=lambda m=mode: set_mode(m)).pack(anchor="w", padx=20)
 
-ttk.Label(root, text="Current CPS:").pack()
-ttk.Label(root, textvariable=cps_var).pack()
+warning_frame = tk.Frame(root, bg="white", height=50)
+warning_frame.pack(pady=15, fill="x", padx=10)
+warning_frame.pack_propagate(False)
+
+warning_label = tk.Label(warning_frame, textvariable=warning_var, wraplength=340,
+                         justify="center", font=("Arial", 12, "bold"), fg="red", bg="white")
+warning_label.pack(expand=True)
+
 
 keyboard.add_hotkey('F6', toggle_running)
 
