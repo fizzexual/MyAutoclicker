@@ -1,14 +1,12 @@
-# Location: /autoclicker/fast_autoclicker.py
-# File: fast_autoclicker.py
-
 import ctypes
 import threading
 import time
 import tkinter as tk
 from tkinter import ttk
-import keyboard
 import json
 import os
+from pynput import keyboard as pkb
+from pynput import mouse as pms
 
 SendInput = ctypes.windll.user32.SendInput
 SETTINGS_FILE = "settings.json"
@@ -68,7 +66,7 @@ threading.Thread(target=clicker_loop, daemon=True).start()
 
 root = tk.Tk()
 root.title("Ultra Fast Autoclicker")
-root.geometry("380x450")
+root.geometry("400x480")
 root.resizable(False, False)
 root.attributes("-topmost", True)
 
@@ -109,22 +107,6 @@ def set_mode(mode):
         warning_frame.config(highlightthickness=0)
     mode_var.set(mode)
 
-def set_hotkey():
-    warning_var.set("Press a key or mouse button...")
-    warning_label.config(fg="orange")
-    root.update()
-
-    event = keyboard.read_event(suppress=True)
-    key_name = event.name
-    if event.event_type in ["down", "down_mouse"] or event.event_type == keyboard.MOUSE_BUTTON:
-        global hotkey
-        hotkey = key_name
-        hotkey_var.set(f"Current Hotkey: {hotkey}")
-        save_settings()
-        warning_var.set("")
-        warning_label.config(fg="red")
-        keyboard.add_hotkey(hotkey, toggle_running)
-
 def save_settings():
     with open(SETTINGS_FILE, "w") as f:
         json.dump({"hotkey": hotkey}, f)
@@ -136,11 +118,74 @@ def load_settings():
             data = json.load(f)
             hotkey = data.get("hotkey", "F6")
             hotkey_var.set(f"Current Hotkey: {hotkey}")
-            keyboard.add_hotkey(hotkey, toggle_running)
+            start_hotkey_listener()
 
-load_settings()
+def set_hotkey():
+    warning_var.set("Press a key or mouse button...")
+    warning_label.config(fg="orange")
+    root.update()
 
-# ===== GUI =====
+    def listen():
+        global hotkey
+        def on_key_press(key):
+            global hotkey
+            try:
+                hotkey = key.char
+            except AttributeError:
+                hotkey = str(key).replace("'", "")
+            hotkey_var.set(f"Current Hotkey: {hotkey}")
+            save_settings()
+            warning_var.set("")
+            warning_label.config(fg="red")
+            start_hotkey_listener()
+            kb_listener.stop()
+            ms_listener.stop()
+
+        def on_click(x, y, button, pressed):
+            global hotkey
+            if pressed:
+                hotkey = str(button).split(".")[-1].upper()
+                hotkey_var.set(f"Current Hotkey: {hotkey}")
+                save_settings()
+                warning_var.set("")
+                warning_label.config(fg="red")
+                start_hotkey_listener()
+                kb_listener.stop()
+                ms_listener.stop()
+
+        kb_listener = pkb.Listener(on_press=on_key_press)
+        ms_listener = pms.Listener(on_click=on_click)
+        kb_listener.start()
+        ms_listener.start()
+        kb_listener.join()
+        ms_listener.join()
+
+    threading.Thread(target=listen, daemon=True).start()
+
+hotkey_thread = None
+
+def start_hotkey_listener():
+    global hotkey_thread
+    if hotkey_thread and hotkey_thread.is_alive():
+        return
+
+    def listen_forever():
+        def on_press(key):
+            try:
+                key_name = key.char
+            except AttributeError:
+                key_name = str(key).replace("'", "")
+            if key_name.upper() == hotkey.upper():
+                toggle_running()
+        def on_click(x, y, button, pressed):
+            if pressed and str(button).split(".")[-1].upper() == hotkey.upper():
+                toggle_running()
+        with pkb.Listener(on_press=on_press) as kb_listener, pms.Listener(on_click=on_click) as ms_listener:
+            kb_listener.join()
+            ms_listener.join()
+
+    hotkey_thread = threading.Thread(target=listen_forever, daemon=True)
+    hotkey_thread.start()
 
 main_frame = tk.Frame(root)
 main_frame.pack(pady=10)
@@ -159,11 +204,10 @@ for mode in modes:
     ttk.Radiobutton(main_frame, text=mode, value=mode, variable=mode_var,
                     command=lambda m=mode: set_mode(m)).pack(anchor="w", padx=20)
 
-# Warning frame
 warning_frame = tk.Frame(main_frame, bg="white", height=60)
 warning_frame.pack(pady=10, fill="x", padx=10)
 warning_frame.pack_propagate(False)
-warning_label = tk.Label(warning_frame, textvariable=warning_var, wraplength=340,
+warning_label = tk.Label(warning_frame, textvariable=warning_var, wraplength=360,
                          justify="center", font=("Arial", 12, "bold"), fg="red", bg="white")
 warning_label.pack(expand=True)
 
@@ -173,4 +217,5 @@ hotkey_frame.pack(pady=10)
 ttk.Button(hotkey_frame, text="SET HOTKEY", command=set_hotkey).pack(side="left", padx=10, ipadx=10, ipady=5)
 ttk.Label(hotkey_frame, textvariable=hotkey_var, font=("Arial", 12)).pack(side="left", padx=10)
 
+load_settings()
 root.mainloop()
