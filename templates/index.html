@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Auto Clicker Speed Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 60px;
+        }
+        #box {
+            width: 320px;
+            height: 320px;
+            background: #111;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+        }
+        #stats {
+            margin-top: 30px;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        .value {
+            font-weight: bold;
+        }
+        button {
+            font-size: 18px;
+            padding: 10px 25px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🖱️ Auto Clicker Speed Test</h1>
+<p>Click or auto-click the box</p>
+
+<div id="box">CLICK HERE</div>
+
+<div style="margin-top:20px">
+    <button onclick="startClicker()">START AUTOCLICKER</button>
+    <button onclick="stopClicker()">STOP AUTOCLICKER</button>
+    <div id="clickerStatus">Autoclicker: OFF</div>
+</div>
+
+<div id="stats">
+    CPS (1s): <span class="value" id="cps1">0</span><br>
+    CPS (5s): <span class="value" id="cps5">0</span><br>
+    CPS (10s): <span class="value" id="cps10">0</span><br>
+    Max CPS: <span class="value" id="maxCps">0</span><br>
+    <hr style="width:200px">
+    Session CPS: <span class="value" id="sessionCps">0</span><br>
+    Total clicks: <span class="value" id="total">0</span>
+</div>
+
+<script>
+let clicks = [];
+let sessionStart = null;
+let maxCps = 0;
+
+const box = document.getElementById("box");
+
+box.addEventListener("click", () => {
+    const now = performance.now() / 1000;
+    if (!sessionStart) sessionStart = now;
+    clicks.push(now);
+    document.getElementById("total").textContent = clicks.length;
+});
+
+function cpsInLast(seconds) {
+    const now = performance.now() / 1000;
+    return clicks.filter(t => now - t <= seconds).length / seconds;
+}
+
+setInterval(() => {
+    if (clicks.length === 0) return;
+
+    const cps1 = cpsInLast(1);
+    const cps5 = cpsInLast(5);
+    const cps10 = cpsInLast(10);
+
+    maxCps = Math.max(maxCps, cps1);
+
+    cps1El.textContent = cps1.toFixed(2);
+    cps5El.textContent = cps5.toFixed(2);
+    cps10El.textContent = cps10.toFixed(2);
+    maxCpsEl.textContent = maxCps.toFixed(2);
+
+    const now = performance.now() / 1000;
+    sessionCpsEl.textContent =
+        (clicks.length / (now - sessionStart)).toFixed(2);
+
+}, 200);
+
+setInterval(() => {
+    if (!sessionStart) return;
+    const now = performance.now() / 1000;
+    if (now - clicks[clicks.length - 1] > 2) {
+        clicks = [];
+        sessionStart = null;
+        maxCps = 0;
+        document.querySelectorAll(".value").forEach(e => e.textContent = "0");
+    }
+}, 500);
+
+// ===== AUTCLICKER CONTROL =====
+
+function startClicker() {
+    fetch("/clicker/start", { method: "POST" })
+        .then(r => r.json())
+        .then(d => clickerStatus.innerText = "Autoclicker: " + d.status);
+}
+
+function stopClicker() {
+    fetch("/clicker/stop", { method: "POST" })
+        .then(r => r.json())
+        .then(d => clickerStatus.innerText = "Autoclicker: " + d.status);
+}
+
+const cps1El = document.getElementById("cps1");
+const cps5El = document.getElementById("cps5");
+const cps10El = document.getElementById("cps10");
+const maxCpsEl = document.getElementById("maxCps");
+const sessionCpsEl = document.getElementById("sessionCps");
+const clickerStatus = document.getElementById("clickerStatus");
+</script>
+
+</body>
+</html>
