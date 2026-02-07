@@ -14,14 +14,14 @@ A high-performance Windows autoclicker built with **Python**, featuring a modern
   - Above Normal  
   - Fast  
   - Ultra Fast  
-  - **SONIC (extreme burst mode)**  
+  - **SONIC**  
 - Start / Stop buttons  
 - Global hotkey support (keyboard & mouse)  
 - Custom hotkey changer  
 - Settings auto-saved (`settings.json`)  
 - Always-on-top GUI  
 - Low CPU usage loop  
-- Native Windows clicking using `SendInput` (fast & reliable)
+- Native Windows clicking using `SendInput`
 
 ---
 
